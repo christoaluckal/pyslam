@@ -319,7 +319,6 @@ class Viewer3D(object):
         vo_state.poses = np.array(vo.poses)
         vo_state.traj3d_est = np.array(vo.traj3d_est).reshape(-1,3)
         vo_state.traj3d_gt = np.array(vo.traj3d_gt).reshape(-1,3)        
-        
         self.qvo.put(vo_state)
 
 

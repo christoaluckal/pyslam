@@ -2,6 +2,7 @@
 .*.swo
 *.pyo 
 __pycache__
+*.mp4
 tmp
 build
 debug.txt

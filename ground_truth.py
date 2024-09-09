@@ -34,7 +34,7 @@ kScaleKitti = 1
 kScaleTum = 20    
 
 
-def groundtruth_factory(settings):
+def groundtruth_factory(settings, frame_start=0, frame_end=0):
 
     type=GroundTruthType.NONE
     associations = None 
@@ -52,7 +52,12 @@ def groundtruth_factory(settings):
         return TumGroundTruth(path, name, associations, GroundTruthType.TUM)
     if type == 'video' or type == 'folder':   
         name = settings['groundtruth_file']
-        return SimpleGroundTruth(path, name, associations, GroundTruthType.SIMPLE)     
+        return SimpleGroundTruth(path, name, associations, GroundTruthType.SIMPLE) 
+    if type == 'coda':
+        start = frame_start
+        end = frame_end
+        name = settings['groundtruth_file']
+        return CODAGroundTruth(path, name, associations, GroundTruthType.KITTI,start,end)
     else:
         print('not using groundtruth')
         print('if you are using main_vo.py, your estimated trajectory will not make sense!')          
@@ -114,6 +119,129 @@ class SimpleGroundTruth(GroundTruth):
         abs_scale = np.sqrt((x - x_prev)*(x - x_prev) + (y - y_prev)*(y - y_prev) + (z - z_prev)*(z - z_prev))
         return x,y,z,abs_scale 
 
+class CODAGroundTruth(GroundTruth):
+    def __init__(self, path, name, associations=None, type = GroundTruthType.KITTI,start=0,end=0): 
+        super().__init__(path, name, associations, type)
+        self.scale = kScaleSimple*1.5
+        self.filename=path + '/' + name
+        self.start = start
+        self.end = end
+        self.num_items = self.end - self.start
+
+        with open(self.filename,'r') as f:
+            self.data = f.readlines()
+            self.found = True 
+
+        if self.data is None:
+            sys.exit('ERROR while reading groundtruth file: please, check how you deployed the files and if the code is consistent with this!') 
+
+    def getDataLine(self, frame_id):
+        return self.data[frame_id].strip().split()
+
+    def getPoseAndAbsoluteScale(self, frame_id,vo=True):
+        if vo:
+            ss = self.getDataLine(frame_id-1)
+            
+            x_prev = self.scale*float(ss[0])
+            y_prev = self.scale*float(ss[2])
+            z_prev = self.scale*float(ss[1])     
+            ss = self.getDataLine(frame_id) 
+            x = self.scale*float(ss[0])
+            y = self.scale*float(ss[2])
+            z = self.scale*float(ss[1])
+
+            abs_scale = np.sqrt((x - x_prev)*(x - x_prev) + (y - y_prev)*(y - y_prev) + (z - z_prev)*(z - z_prev))
+            return x,y,z,abs_scale
+        else:
+            ss = self.getDataLine(frame_id-1)
+            x_prev = self.scale*float(ss[1])
+            y_prev = self.scale*float(ss[2])
+            z_prev = self.scale*float(ss[3])     
+            ss = self.getDataLine(frame_id) 
+            x = self.scale*float(ss[1])
+            y = self.scale*float(ss[2])
+            z = self.scale*float(ss[3])
+            abs_scale = np.sqrt((x - x_prev)*(x - x_prev) + (y - y_prev)*(y - y_prev) + (z - z_prev)*(z - z_prev))
+            return x,y,z,abs_scale
+        
+    
+    # def convertToSimpleXYZ(self, filename='groundtruth.txt'):
+    #     out_file = open(filename,"w")
+    #     num_lines = len(self.data)
+    #     print('num_lines:', num_lines)
+    #     x0,y0,z0,_ = self.getPoseAndAbsoluteScale(self.start)
+    #     for ii in range(self.start,self.end):
+    #         x,y,z,scale = self.getPoseAndAbsoluteScale(ii)
+    #         x -= x0
+    #         y -= y0
+    #         z -= z0
+    #         if ii == self.start:
+    #             scale = 1 # first sample: we do not have a relative 
+    #         out_file.write( "%f %f %f %f \n" % (x,y,z,scale) )
+    #     out_file.close()
+
+    #     with open('groundtruth.txt','r') as f:
+    #         lines = f.readlines()
+    #         print('lines:',len(lines))
+
+    def convertToSimpleXYZ(self, filename='groundtruth.txt',vo_f=True):
+        out_file = open(filename,"w")
+        x0,y0,z0,_ = self.getPoseAndAbsoluteScale(self.start,vo=vo_f)
+        p = []
+        for ii in range(self.start,self.end):
+            x,y,z,scale = self.getPoseAndAbsoluteScale(ii,vo=vo_f)
+            x -= x0
+            y -= y0
+            z -= z0
+            if ii == self.start:
+                scale = 1 # first sample: we do not have a relative 
+            # out_file.write( "%f %f %f %f \n" % (x,y,z,scale) )
+            p.append([x,y,z,scale])
+
+        p = np.array(p)
+        print(f"Mean X: {np.mean(p[:,0])}")
+        print(f"Mean Y: {np.mean(p[:,1])}")
+        print(f"Mean Z: {np.mean(p[:,2])}")
+
+
+        import matplotlib.pyplot as plt
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.plot(p[:,0],p[:,1],p[:,2])
+        plt.show()
+
+
+
+        y = np.mean(p[0:300,1])
+        x = np.mean(p[0:300,0])
+        # yaw = np.arctan2(p[300,1]-p[0,1],p[300,0]-p[0,0])
+        yaw = 0
+
+        R = np.array([[np.cos(yaw),-np.sin(yaw)],[np.sin(yaw),np.cos(yaw)]])
+
+        xy = np.dot(R,p[:,0:2].T).T
+        z = p[:,2]
+        s = p[:,3]
+
+        fin = np.hstack((xy,z.reshape(-1,1),s.reshape(-1,1)))
+
+        for i in range(fin.shape[0]):
+            if i == 0:
+                out_file.write( "%f %f %f %f \n" % (0,0,0,1) )
+            else:
+                out_file.write( "%f %f %f %f \n" % (fin[i,0],fin[i,1],fin[i,2],fin[i,3]) )
+
+        print(f"Mean X: {np.mean(fin[:,0])}")
+        print(f"Mean Y: {np.mean(fin[:,1])}")
+        print(f"Mean Z: {np.mean(fin[:,2])}")
+
+
+        out_file.close()
+        with open('groundtruth.txt','r') as f:
+            lines = f.readlines()
+            print('lines:',len(lines))
+        
+        
 
 class KittiGroundTruth(GroundTruth):
     def __init__(self, path, name, associations=None, type = GroundTruthType.KITTI): 

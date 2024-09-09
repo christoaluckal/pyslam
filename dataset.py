@@ -61,8 +61,9 @@ def dataset_factory(settings):
         dataset.set_is_color(is_color)   
     if type == 'tum':
         dataset = TumDataset(path, name, associations, DatasetType.TUM)
-    if type == 'video':
-        dataset = VideoDataset(path, name, associations, DatasetType.VIDEO)   
+    if type == 'video' or type == 'coda':
+        dataset = VideoDataset(path, name, associations, DatasetType.VIDEO)  
+
     if type == 'folder':
         fps = 10 # a default value 
         if 'fps' in settings:

@@ -47,7 +47,7 @@ kUseGroundTruthScale = True
 # With this very basic approach, you need to use a ground truth in order to recover a correct inter-frame scale $s$ and estimate a 
 # valid trajectory by composing $C_k = C_{k-1} * [R_{k-1,k}, s t_{k-1,k}]$. 
 class VisualOdometry(object):
-    def __init__(self, cam, groundtruth, feature_tracker : FeatureTracker):
+    def __init__(self, cam, groundtruth, feature_tracker : FeatureTracker, outlier_removal=False):
         self.stage = VoStage.NO_IMAGES_YET
         self.cam = cam
         self.cur_image = None   # current image
@@ -85,10 +85,14 @@ class VisualOdometry(object):
         self.timer_pose_est = TimerFps('PoseEst', is_verbose = self.timer_verbose)
         self.timer_feat = TimerFps('Feature', is_verbose = self.timer_verbose)
 
+        self.outlier_removal = outlier_removal
+
     # get current translation scale from ground-truth if groundtruth is not None 
     def getAbsoluteScale(self, frame_id):  
         if self.groundtruth is not None and kUseGroundTruthScale:
+            
             self.trueX, self.trueY, self.trueZ, scale = self.groundtruth.getPoseAndAbsoluteScale(frame_id)
+            print(f"For frame {frame_id}, trueX: {self.trueX}, trueY: {self.trueY}, trueZ: {self.trueZ}, scale: {scale}")
             return scale
         else:
             self.trueX = 0 
@@ -127,11 +131,13 @@ class VisualOdometry(object):
     # - degenerate motions such a pure rotation (a sufficient parallax is required) or an infinitesimal viewpoint change (where the translation is almost zero)
     # N.B.3: the five-point algorithm (used for estimating the Essential Matrix) seems to work well in the degenerate planar cases [Five-Point Motion Estimation Made Easy, Hartley]
     # N.B.4: as reported above, in case of pure rotation, this algorithm will compute a useless fundamental matrix which cannot be decomposed to return the rotation 
-    def estimatePose(self, kps_ref, kps_cur):	
+    def estimatePose(self, kps_ref, kps_cur,mask=None):	
         kp_ref_u = self.cam.undistort_points(kps_ref)	
         kp_cur_u = self.cam.undistort_points(kps_cur)	        
         self.kpn_ref = self.cam.unproject_points(kp_ref_u)
         self.kpn_cur = self.cam.unproject_points(kp_cur_u)
+        if self.outlier_removal and mask is not None:
+            self.removeOutliersByMask(mask)
         if kUseEssentialMatrixEstimation:
             ransac_method = None 
             try: 
@@ -155,14 +161,17 @@ class VisualOdometry(object):
         self.kps_ref = np.array([x.pt for x in self.kps_ref], dtype=np.float32) if self.kps_ref is not None else None
         self.draw_img = self.drawFeatureTracks(self.cur_image)
 
-    def processFrame(self, frame_id):
+    def processFrame(self, frame_id, mask=None):
         # track features 
         self.timer_feat.start()
         self.track_result = self.feature_tracker.track(self.prev_image, self.cur_image, self.kps_ref, self.des_ref)
         self.timer_feat.refresh()
         # estimate pose 
         self.timer_pose_est.start()
-        R, t = self.estimatePose(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)     
+        if self.outlier_removal:
+            R, t = self.estimatePose(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched, mask=mask)
+        else:
+            R, t = self.estimatePose(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)     
         self.timer_pose_est.refresh()
         # update keypoints history  
         self.kps_ref = self.track_result.kps_ref
@@ -199,7 +208,7 @@ class VisualOdometry(object):
         self.updateHistory()           
         
 
-    def track(self, img, frame_id):
+    def track(self, img, frame_id,mask=None):
         if kVerbose:
             print('..................................')
             print('frame: ', frame_id) 
@@ -207,11 +216,12 @@ class VisualOdometry(object):
         if img.ndim>2:
             img = cv2.cvtColor(img,cv2.COLOR_RGB2GRAY)             
         # check coherence of image size with camera settings 
+        print(f'img shape: {img.shape} dim:{img.ndim}, cam shape: {self.cam.height, self.cam.width}')
         assert(img.ndim==2 and img.shape[0]==self.cam.height and img.shape[1]==self.cam.width), "Frame: provided image has not the same size as the camera model or image is not grayscale"
         self.cur_image = img
         # manage and check stage 
         if(self.stage == VoStage.GOT_FIRST_IMAGE):
-            self.processFrame(frame_id)
+            self.processFrame(frame_id,mask)
         elif(self.stage == VoStage.NO_IMAGES_YET):
             self.processFirstFrame()
             self.stage = VoStage.GOT_FIRST_IMAGE            
