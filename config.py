@@ -40,9 +40,9 @@ class Config(object):
     '''
     Config is used for getting libs settings (from config.ini) and camera settings from a yaml file 
     '''
-    def __init__(self):
+    def __init__(self,cfg_file='config.ini'):
         self.root_folder = __location__
-        self.config_file = 'config.ini'
+        self.config_file = cfg_file
         self.config_parser = configparser.ConfigParser()
         self.cam_settings = None
         self.dataset_settings = None

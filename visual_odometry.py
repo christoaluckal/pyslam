@@ -111,17 +111,17 @@ class VisualOdometry(object):
             return np.matrix(F), mask 	
 
     def removeOutliersByMask(self, mask): 
-        if mask is not None:    
+        if mask is not None:   
             n = self.kpn_cur.shape[0]     
             mask_index = [ i for i,v in enumerate(mask) if v > 0]    
             self.kpn_cur = self.kpn_cur[mask_index]           
-            self.kpn_ref = self.kpn_ref[mask_index]           
+            self.kpn_ref = self.kpn_ref[mask_index]    
             if self.des_cur is not None: 
                 self.des_cur = self.des_cur[mask_index]        
             if self.des_ref is not None: 
                 self.des_ref = self.des_ref[mask_index]  
             if kVerbose:
-                print('removed ', n-self.kpn_cur.shape[0],' outliers')                
+                print(n,' KPs,removed ', n-self.kpn_cur.shape[0],' outliers')                
 
     # fit essential matrix E with RANSAC such that:  p2.T * E * p1 = 0  where  E = [t21]x * R21
     # out: [Rrc, trc]   (with respect to 'ref' frame) 
@@ -133,18 +133,31 @@ class VisualOdometry(object):
     # N.B.4: as reported above, in case of pure rotation, this algorithm will compute a useless fundamental matrix which cannot be decomposed to return the rotation 
     def estimatePose(self, kps_ref, kps_cur,mask=None):	
         kp_ref_u = self.cam.undistort_points(kps_ref)	
-        kp_cur_u = self.cam.undistort_points(kps_cur)	        
+        kp_cur_u = self.cam.undistort_points(kps_cur)	 
+        mask_new = None  
+    
+        if self.outlier_removal and mask is not None:
+            try:
+                int_kp_ref_u = np.int32(kp_ref_u)
+                max_row_mask = int_kp_ref_u[:,1] < mask.shape[0]
+                max_col_mask = int_kp_ref_u[:,0] < mask.shape[1]
+                mask_final = np.logical_and(max_row_mask, max_col_mask)
+                int_kp_ref_u = int_kp_ref_u[mask_final]
+                mask_new = mask[int_kp_ref_u[:,1], int_kp_ref_u[:,0]]
+            except:
+                mask_new = None
+            
         self.kpn_ref = self.cam.unproject_points(kp_ref_u)
         self.kpn_cur = self.cam.unproject_points(kp_cur_u)
-        if self.outlier_removal and mask is not None:
-            self.removeOutliersByMask(mask)
+        if self.outlier_removal and mask_new is not None:
+            self.removeOutliersByMask(mask_new)
         if kUseEssentialMatrixEstimation:
             ransac_method = None 
             try: 
                 ransac_method = cv2.USAC_MSAC 
             except: 
                 ransac_method = cv2.RANSAC
-            # the essential matrix algorithm is more robust since it uses the five-point algorithm solver by D. Nister (see the notes and paper above )
+            # the essential matrix algorithm is more robust since it uses the five-point algorithm solver by D. Nister (see the notes and paper above ))
             E, self.mask_match = cv2.findEssentialMat(self.kpn_cur, self.kpn_ref, focal=1, pp=(0., 0.), method=ransac_method, prob=kRansacProb, threshold=kRansacThresholdNormalized)
         else:
             # just for the hell of testing fundamental matrix fitting ;-) 
@@ -154,15 +167,24 @@ class VisualOdometry(object):
         _, R, t, mask = cv2.recoverPose(E, self.kpn_cur, self.kpn_ref, focal=1, pp=(0., 0.))   
         return R,t  # Rrc, trc (with respect to 'ref' frame) 		
 
-    def processFirstFrame(self):
+    def processFirstFrame(self,mask=None):
         # only detect on the current image 
         self.kps_ref, self.des_ref = self.feature_tracker.detectAndCompute(self.cur_image)
+
         # convert from list of keypoints to an array of points 
         self.kps_ref = np.array([x.pt for x in self.kps_ref], dtype=np.float32) if self.kps_ref is not None else None
+
+        if self.outlier_removal and mask is not None:
+            int_kp_ref = np.int32(self.kps_ref)
+            mask_new = mask[int_kp_ref[:,1], int_kp_ref[:,0]]
+            self.kps_ref = self.kps_ref[mask_new]
+            self.des_ref = self.des_ref[mask_new]
+
         self.draw_img = self.drawFeatureTracks(self.cur_image)
 
     def processFrame(self, frame_id, mask=None):
         # track features 
+        print('tracking features')
         self.timer_feat.start()
         self.track_result = self.feature_tracker.track(self.prev_image, self.cur_image, self.kps_ref, self.des_ref)
         self.timer_feat.refresh()
@@ -241,14 +263,17 @@ class VisualOdometry(object):
             else:    
                 for i,pts in enumerate(zip(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)):
                     drawAll = False # set this to true if you want to draw outliers 
-                    if self.mask_match[i] or drawAll:
-                        p1, p2 = pts 
-                        a,b = p1.astype(int).ravel()
-                        c,d = p2.astype(int).ravel()
-                        cv2.line(draw_img, (a,b),(c,d), (0,255,0), 1)
-                        cv2.circle(draw_img,(a,b),1, (0,0,255),-1)   
-                    else:
-                        num_outliers+=1
+                    try:
+                        if self.mask_match[i] or drawAll:
+                            p1, p2 = pts 
+                            a,b = p1.astype(int).ravel()
+                            c,d = p2.astype(int).ravel()
+                            cv2.line(draw_img, (a,b),(c,d), (0,255,0), 1)
+                            cv2.circle(draw_img,(a,b),1, (0,0,255),-1)   
+                        else:
+                            num_outliers+=1
+                    except:
+                        pass
             if kVerbose:
                 print('# outliers: ', num_outliers)     
         return draw_img            
