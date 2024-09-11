@@ -201,6 +201,7 @@ class VisualOdometry(object):
         self.des_cur = self.track_result.des_cur 
         self.num_matched_kps = self.kpn_ref.shape[0] 
         self.num_inliers =  np.sum(self.mask_match)
+        self.num_outliers = len(self.mask_match) - self.num_inliers
         #compute average delta pixel shift
         self.average_pixel_shift = np.mean(np.abs(self.track_result.kps_ref_matched - self.track_result.kps_cur_matched))
         print(f'average pixel shift: {self.average_pixel_shift}')
@@ -227,10 +228,13 @@ class VisualOdometry(object):
                 print('# new detected points: ', self.kps_cur.shape[0])                  
         self.kps_ref = self.kps_cur
         self.des_ref = self.des_cur
-        self.updateHistory()           
+        self.updateHistory() 
+
+        return [self.num_matched_kps, self.num_inliers, self.num_outliers, self.average_pixel_shift]          
         
 
     def track(self, img, frame_id,mask=None):
+        kps,ins,outs,px_shift = None,None,None,None
         if kVerbose:
             print('..................................')
             print('frame: ', frame_id) 
@@ -243,13 +247,14 @@ class VisualOdometry(object):
         self.cur_image = img
         # manage and check stage 
         if(self.stage == VoStage.GOT_FIRST_IMAGE):
-            self.processFrame(frame_id,mask)
+            kps,ins,outs,px_shift = self.processFrame(frame_id,mask)
         elif(self.stage == VoStage.NO_IMAGES_YET):
             self.processFirstFrame()
             self.stage = VoStage.GOT_FIRST_IMAGE            
         self.prev_image = self.cur_image    
         # update main timer (for profiling)
         self.timer_main.refresh()  
+        return kps,ins,outs,px_shift
   
 
     def drawFeatureTracks(self, img, reinit = False):
