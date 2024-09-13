@@ -66,22 +66,34 @@ import os
 from tqdm import tqdm
 if __name__ == "__main__":
 
-    f_start = 1150
-    f_end = 2100
+    f_start = 0
+    f_end = 1300
     num = f_end - f_start
 
     # mask_loc = '/mnt/share/nas/Projects/Featurability/masks/kitti_00_npy_masks/0.0_0.1'
-    # masks_temp = sorted(os.listdir(mask_loc), key=lambda x: int(x.split('.')[0]))[:690]
+    # masks_temp = sorted(os.listdir(mask_loc), key=lambda x: int(x.split('.')[0]))[f_start:f_end]
     # masks = [np.load(os.path.join(mask_loc, mask)) for mask in masks_temp]
 
-    mask_loc = '/mnt/share/nas/Projects/Featurability/masks/coda_00_masks/0.0_0.15'
-    masks_temp = sorted(os.listdir(mask_loc), key=lambda x: int(x.split('.')[0]))[f_start:f_end]
+    # mask_loc = '/mnt/share/nas/Projects/Featurability/masks/coda_00_masks/0.0_0.15'
+    # masks_temp = sorted(os.listdir(mask_loc), key=lambda x: int(x.split('.')[0]))[f_start:f_end]
+    # masks = []
+    # for mask in tqdm(masks_temp):
+    #     mask_img = cv2.imread(os.path.join(mask_loc, mask), cv2.IMREAD_GRAYSCALE)
+    #     # convert to boolean mask
+    #     mask_img = mask_img > 0
+    #     masks.append(mask_img)
+
+    mask_loc = '/mnt/share/nas/Projects/Featurability/masks/day2_davis_run1_masks/0.0_0.15'
+    
+    masks_temp = sorted([x for x in os.listdir(mask_loc) if x.endswith('.png')], key=lambda x: int(x.split('.')[0]))[f_start:f_end]
     masks = []
     for mask in tqdm(masks_temp):
         mask_img = cv2.imread(os.path.join(mask_loc, mask), cv2.IMREAD_GRAYSCALE)
+        
         # convert to boolean mask
         mask_img = mask_img > 0
         masks.append(mask_img)
+    
 
     
 
@@ -93,7 +105,7 @@ if __name__ == "__main__":
         "LK_SHI_TOMASI": FeatureTrackerConfigs.LK_SHI_TOMASI,
         "FAST_ORB": FeatureTrackerConfigs.FAST_ORB,
         "ORB": FeatureTrackerConfigs.ORB,
-        # "KAZE": FeatureTrackerConfigs.KAZE,
+        # # "KAZE": FeatureTrackerConfigs.KAZE,
         "AKAZE": FeatureTrackerConfigs.AKAZE,
         "BRISK": FeatureTrackerConfigs.BRISK,
         "SIFT": FeatureTrackerConfigs.SIFT,
@@ -102,20 +114,24 @@ if __name__ == "__main__":
         "SUPERPOINT": FeatureTrackerConfigs.SUPERPOINT,
         # "LIGHTGLUE": FeatureTrackerConfigs.LIGHTGLUE,
 
-        # "LOFTR": FeatureTrackerConfigs.LOFTR
+        "LOFTR": FeatureTrackerConfigs.LOFTR
     }
     for n_features in [400,500,1000,1500,2000,3000]:
+    # for n_features in [1000]:
         for feat in features.keys():
-            for exp_type in ['KITTI','KITTI_masked']:
+            for exp_type in ['DAVIS','DAVIS_masked']:
+            # for exp_type in ['KITTI','KITTI_masked']:
             # for exp_type in ['CODA','CODA_masked']:
                 time.sleep(2)
                 try:
                     if exp_type == 'KITTI':
-                        config = Config(cfg_file='config_og.ini')
+                        config = Config(cfg_file='config_kitti.ini')
                     elif exp_type == 'KITTI_masked':
-                        config = Config(cfg_file='config_masked.ini')
+                        config = Config(cfg_file='config_kitti_masked.ini')
                     elif exp_type == 'CODA' or exp_type == 'CODA_masked':
                         config = Config(cfg_file='config_coda.ini')
+                    elif exp_type == 'DAVIS' or exp_type == 'DAVIS_masked':
+                        config = Config(cfg_file='config_davis.ini')
                     else:
                         raise ValueError(f"Invalid exp_type: {exp_type}")
 
@@ -178,9 +194,9 @@ if __name__ == "__main__":
                         if img is not None:
                             start = time.time()
 
-                            if exp_type == 'KITTI' or exp_type == 'CODA':
+                            if exp_type == 'KITTI' or exp_type == 'CODA' or exp_type == 'DAVIS':
                                 kp,ins,outs,pxs=vo.track(img, img_id)
-                            elif exp_type == 'KITTI_masked' or exp_type == 'CODA_masked':
+                            elif exp_type == 'KITTI_masked' or exp_type == 'CODA_masked' or exp_type == 'DAVIS_masked':
                                 mask = masks[img_id]
                                 kp,ins,outs,pxs=vo.track(img, img_id,mask)  # main VO function 
                             end = time.time()

@@ -91,6 +91,7 @@ class GroundTruth(object):
             x,y,z,scale = self.getPoseAndAbsoluteScale(ii)
             if ii == 0:
                 scale = 1 # first sample: we do not have a relative 
+            # out_file.write( "%f %f %f %f \n" % (x,y,z,scale) )
             out_file.write( "%f %f %f %f \n" % (x,y,z,scale) )
         out_file.close()
 

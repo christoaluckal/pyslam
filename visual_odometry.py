@@ -93,7 +93,7 @@ class VisualOdometry(object):
             
             self.trueX, self.trueY, self.trueZ, scale = self.groundtruth.getPoseAndAbsoluteScale(frame_id)
             print(f"For frame {frame_id}, trueX: {self.trueX}, trueY: {self.trueY}, trueZ: {self.trueZ}, scale: {scale}")
-            return scale
+            return scale*1.8
         else:
             self.trueX = 0 
             self.trueY = 0 
