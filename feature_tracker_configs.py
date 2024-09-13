@@ -364,3 +364,11 @@ class FeatureTrackerConfigs(object):
                 descriptor_type = FeatureDescriptorTypes.NONE, 
                 match_ratio_test = kRatioTest,                               
                 tracker_type = FeatureTrackerTypes.LOFTR)       
+    
+    SILK = dict(num_features=kNumFeatures,                            # N.B.: here, keypoints are not oriented! (i.e. keypoint.angle=0 always)
+                num_levels = 1, 
+                scale_factor = 1.2,
+                detector_type = FeatureDetectorTypes.SILK, 
+                descriptor_type = FeatureDescriptorTypes.SILK, 
+                match_ratio_test = kRatioTest,                               
+                tracker_type = kTrackerType) 

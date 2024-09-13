@@ -172,4 +172,4 @@ class Config(object):
 
 if __name__ != "__main__":
     # we automatically read lib path when this file is called via 'import'
-    cfg = Config()
+    cfg = Config(cfg_file='config_kitti.ini')

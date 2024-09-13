@@ -63,6 +63,7 @@ class FeatureDetectorTypes(Enum):
     LIGHTGLUESIFT       = 26  # To be used with LightGlue
     XFEAT               = 27  # [end-to-end] joint detector-descriptor - "XFeat: Accelerated Features for Lightweight Image Matching"
     KEYNETAFFNETHARDNET = 28  # [kornia-based] Convenience module, which implements KeyNet detector + AffNet + HardNet descriptor. "Key.Net: Keypoint Detection by Handcrafted and Learned CNN Filters"
+    SILK                = 29
 
 class FeatureDescriptorTypes(Enum):
     NONE                = 0   # Used for LK tracker (in main_vo.py)
@@ -99,6 +100,7 @@ class FeatureDescriptorTypes(Enum):
     LIGHTGLUESIFT       = 31  # To be used with LightGlue
     XFEAT               = 32  # [end-to-end] joint detector-descriptor - "XFeat: Accelerated Features for Lightweight Image Matching"
     KEYNETAFFNETHARDNET = 33  # [kornia-based] Convenience module, which implements KeyNet detector + AffNet + HardNet descriptor. "Key.Net: Keypoint Detection by Handcrafted and Learned CNN Filters"
+    SILK                = 34
 
 
 class FeatureInfo(object): 
@@ -209,3 +211,6 @@ class FeatureInfo(object):
     #       
     norm_type[FeatureDescriptorTypes.KEYNETAFFNETHARDNET] = cv2.NORM_L2           
     max_descriptor_distance[FeatureDescriptorTypes.KEYNETAFFNETHARDNET] = 2.40   # KEYNETAFFNETHARDNET      
+
+    norm_type[FeatureDescriptorTypes.SILK] = cv2.NORM_L2
+    max_descriptor_distance[FeatureDescriptorTypes.SILK] = 1.0

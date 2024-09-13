@@ -60,6 +60,7 @@ DiskFeature2D = import_from('feature_disk', 'DiskFeature2D')
 AlikedFeature2D = import_from('feature_aliked', 'AlikedFeature2D')
 LightGlueSIFTFeature2D = import_from('feature_lightglue_sift', 'LightGlueSIFTFeature2D')
 KeyNetAffNetHardNetFeature2D = import_from('feature_keynet_affnet_hardnet', 'KeyNetAffNetHardNetFeature2D')
+SiLKFeature2D = import_from('feature_silk', 'SiLKFeature2D')
 
 kVerbose = True   
 
@@ -324,7 +325,16 @@ class FeatureManager(object):
                 self.pyramid_do_parallel = False                 # N.B.: SUPERPOINT interface class is not thread-safe!
                 self.force_multiscale_detect_and_compute = True  # force it since SUPERPOINT cannot compute descriptors separately from keypoints 
             #  
-            #     
+            # 
+        elif self.detector_type == FeatureDetectorTypes.SILK:
+            self.oriented_features = False                         
+            self._feature_detector = SiLKFeature2D()   
+            if self.descriptor_type != FeatureDescriptorTypes.NONE:              
+                self.use_pyramid_adaptor = self.num_levels > 1    
+                self.need_nms = self.num_levels > 1   
+                self.pyramid_type = PyramidType.GAUSS_PYRAMID    
+                self.pyramid_do_parallel = False                 # N.B.: SILK interface class is not thread-safe!
+                self.force_multiscale_detect_and_compute = True    
         elif self.detector_type == FeatureDetectorTypes.XFEAT:         
             self.oriented_features = False                         
             self._feature_detector = XfeatFeature2D()  
@@ -592,6 +602,10 @@ class FeatureManager(object):
                 self._feature_descriptor = self._feature_detector  # reuse the same SuperPointDector object  
                 #
                 #
+            elif self.descriptor_type == FeatureDescriptorTypes.SILK:
+                if self.detector_type != FeatureDetectorTypes.SILK: 
+                    raise ValueError("You cannot use SILK descriptor without SILK detector!\nPlease, select SILK as both descriptor and detector!")
+                self._feature_descriptor = self._feature_detector
             elif self.descriptor_type == FeatureDescriptorTypes.XFEAT:              
                 if self.detector_type != FeatureDetectorTypes.XFEAT: 
                     raise ValueError("You cannot use XFEAT descriptor without XFEAT detector!\nPlease, select XFEATas both descriptor and detector!")
