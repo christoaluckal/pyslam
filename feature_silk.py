@@ -36,13 +36,14 @@ from silk.backbones.superpoint.vgg import ParametricVGG
 from silk.config.model import load_model_from_checkpoint
 
 kVerbose = True   
+import numpy as np
 
 
 class SiLKOptions:
     def __init__(self, do_cuda=True): 
         # default options from demo_superpoints
         # self.weights_path=config.cfg.root_folder + '/thirdparty/silk/silk_coda_dnn.pth'
-        self.weights_path='/home/caluckal/Developer/fall24/feature/mypyslam/thirdparty/silk/silk_coda_dnn.ckpt'
+        self.weights_path='/home/caluckal/Developer/fall24/feature/mypyslam/thirdparty/silk/silk_dnn_kitti11_epoch99.ckpt'
         print(f'SiLK weights: {self.weights_path}')
         self.nn_thresh=0.7
         use_cuda = torch.cuda.is_available() and do_cuda
@@ -69,7 +70,7 @@ class SiLKFeature2D:
             detection_top_k=num_features,
             nms_dist=0,
             border_dist=0,
-            default_outputs=("dense_positions", "dense_descriptors"),
+            default_outputs=("sparse_positions", "sparse_descriptors"),
             descriptor_scale_factor=1.41, # scaling of descriptor output, do not change
             padding=0,
         )
@@ -81,6 +82,7 @@ class SiLKFeature2D:
             freeze=True,
             eval=True,
         )
+        
         print('==> Successfully loaded pre-trained network.')
                         
         self.pts = []
@@ -97,8 +99,12 @@ class SiLKFeature2D:
             images = images / 255.0
         else:
             # stack x 3 times to make it 3 channel
-            x = torch.stack((x,x,x),dim=0)
+            
             x = x.unsqueeze(1)  # add channel dimension
+            print(f"Frame Shape before permute: {x.shape}")
+            # x = x.permute(1,3,0,2)
+            x = x.permute(3, 1, 0, 2)
+            x = x / 255.0
         print(f"Frame Shape before passing to silk: {x.shape}")
         return x
 
@@ -106,9 +112,21 @@ class SiLKFeature2D:
     def detectAndCompute(self, frame, mask=None):  # mask is a fake input 
         with self.lock: 
             self.frame = frame 
-            temp_frame = self.silkload(self.frame, as_gray=True)
+            temp_frame = self.silkload(self.frame)
             self.frameFloat  = temp_frame
             self.kps, self.des = self.fe(self.frameFloat)
+            og_kp = []
+
+            
+
+            for p in self.kps[0]:
+                x_coord, y_coord, _ = float(p[0].cpu().numpy()), float(p[1].cpu().numpy()), float(p[2].cpu().numpy())
+                kp = cv2.KeyPoint(y_coord, x_coord, 1)
+                og_kp.append(kp)
+
+            self.des = np.stack([tensor.cpu().numpy() for tensor in self.des[0]])
+            self.kps = og_kp
+            
             if kVerbose:
                 print('detector: SILK, #features: ', len(self.kps), ', frame res: ', frame.shape[0:2])      
             return self.kps, self.des               

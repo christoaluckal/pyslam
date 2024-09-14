@@ -42,15 +42,15 @@ from feature_matcher import FeatureMatcherTypes
 
 from feature_tracker_configs import FeatureTrackerConfigs
 
-# from rerun_interface import Rerun
+from rerun_interface import Rerun
 import matplotlib.pyplot as plt
 plt.set_loglevel('error')
 
 
-# kUseRerun = True
-# # check rerun does not have issues 
-# if kUseRerun and not Rerun.is_ok():
-#     kUseRerun = False
+kUseRerun = True
+# check rerun does not have issues 
+if kUseRerun and not Rerun.is_ok():
+    kUseRerun = False
     
 """
 use or not pangolin (if you want to use it then you need to install it by using the script install_thirdparty.sh)
@@ -67,7 +67,7 @@ from tqdm import tqdm
 if __name__ == "__main__":
 
     f_start = 0
-    f_end = 10
+    f_end = 200
     num = f_end - f_start
 
 
@@ -164,11 +164,11 @@ if __name__ == "__main__":
                 half_traj_img_size = int(0.5*traj_img_size)
                 draw_scale = 1
 
-                make_plots = False
+                make_plots = True
 
                 is_draw_3d = True
                 
-                is_draw_with_rerun = False
+                is_draw_with_rerun = True
                 if is_draw_with_rerun:
                     Rerun.init_vo()
                 else: 

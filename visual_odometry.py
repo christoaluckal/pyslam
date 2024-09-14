@@ -167,10 +167,9 @@ class VisualOdometry(object):
         _, R, t, mask = cv2.recoverPose(E, self.kpn_cur, self.kpn_ref, focal=1, pp=(0., 0.))   
         return R,t  # Rrc, trc (with respect to 'ref' frame) 		
 
-    def processFirstFrame(self,mask=None):
+    def processFirstFrame(self,mask=None,color=False):
         # only detect on the current image 
         self.kps_ref, self.des_ref = self.feature_tracker.detectAndCompute(self.cur_image)
-
         # convert from list of keypoints to an array of points 
         self.kps_ref = np.array([x.pt for x in self.kps_ref], dtype=np.float32) if self.kps_ref is not None else None
 
@@ -208,7 +207,7 @@ class VisualOdometry(object):
         if kVerbose:        
             print('# matched points: ', self.num_matched_kps, ', # inliers: ', self.num_inliers, ', matcher type: ', self.feature_tracker.matcher.matcher_type.name if self.feature_tracker.matcher is not None else 'None', ', tracker type: ', self.feature_tracker.tracker_type.name)      
         # t is estimated up to scale (i.e. the algorithm always returns ||trc||=1, we need a scale in order to recover a translation which is coherent with the previous estimated ones)
-        absolute_scale = self.getAbsoluteScale(frame_id)
+        absolute_scale = self.getAbsoluteScale(frame_id)*0.5
         if(absolute_scale > kAbsoluteScaleThreshold and self.average_pixel_shift > 1):
             # compose absolute motion [Rwa,twa] with estimated relative motion [Rab,s*tab] (s is the scale extracted from the ground truth)
             # [Rwb,twb] = [Rwa,twa]*[Rab,tab] = [Rwa*Rab|twa + Rwa*tab]
@@ -239,13 +238,13 @@ class VisualOdometry(object):
             print('..................................')
             print('frame: ', frame_id) 
         # convert image to gray if needed    
-        if img.ndim>2:
-            img = cv2.cvtColor(img,cv2.COLOR_RGB2GRAY)             
+        # if img.ndim>2:
+        #     img = cv2.cvtColor(img,cv2.COLOR_RGB2GRAY)             
         # check coherence of image size with camera settings 
         print(f'img shape: {img.shape} dim:{img.ndim}, cam shape: {self.cam.height, self.cam.width}')
-        assert(img.ndim==2 and img.shape[0]==self.cam.height and img.shape[1]==self.cam.width), "Frame: provided image has not the same size as the camera model or image is not grayscale"
-        self.cur_image = img
+        # assert(img.ndim==2 and img.shape[0]==self.cam.height and img.shape[1]==self.cam.width), "Frame: provided image has not the same size as the camera model or image is not grayscale"
         # manage and check stage 
+        self.cur_image = img
         if(self.stage == VoStage.GOT_FIRST_IMAGE):
             kps,ins,outs,px_shift = self.processFrame(frame_id,mask)
         elif(self.stage == VoStage.NO_IMAGES_YET):
@@ -258,7 +257,8 @@ class VisualOdometry(object):
   
 
     def drawFeatureTracks(self, img, reinit = False):
-        draw_img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+        # draw_img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+        draw_img = img.copy()
         num_outliers = 0        
         if(self.stage == VoStage.GOT_FIRST_IMAGE):            
             if reinit:
