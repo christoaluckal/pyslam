@@ -42,15 +42,15 @@ from feature_matcher import FeatureMatcherTypes
 
 from feature_tracker_configs import FeatureTrackerConfigs
 
-from rerun_interface import Rerun
+# from rerun_interface import Rerun
 import matplotlib.pyplot as plt
 plt.set_loglevel('error')
 
 
-kUseRerun = True
-# check rerun does not have issues 
-if kUseRerun and not Rerun.is_ok():
-    kUseRerun = False
+# kUseRerun = True
+# # check rerun does not have issues 
+# if kUseRerun and not Rerun.is_ok():
+#     kUseRerun = False
     
 """
 use or not pangolin (if you want to use it then you need to install it by using the script install_thirdparty.sh)
@@ -67,14 +67,19 @@ from tqdm import tqdm
 if __name__ == "__main__":
 
     f_start = 0
-    f_end = 200
+    f_end = 690
     num = f_end - f_start
 
 
-    # mask_loc = '/mnt/share/nas/Projects/Featurability/masks/kitti_00_npy_masks/0.0_0.1'
-    # masks_temp = sorted(os.listdir(mask_loc), key=lambda x: int(x.split('.')[0]))[f_start:f_end]
+    mask_loc = '/home/caluckal/Developer/fall24/feature/masks'
+    masks_temp = sorted(os.listdir(mask_loc), key=lambda x: int(x.split('.')[0]))[f_start:f_end]
     # masks = [np.load(os.path.join(mask_loc, mask)) for mask in masks_temp]
 
+    masks = []
+    for mask in tqdm(masks_temp):
+        mask_img = cv2.imread(os.path.join(mask_loc, mask), cv2.IMREAD_GRAYSCALE)
+        mask_img = mask_img > 0
+        masks.append(mask_img)
     # mask_loc = '/mnt/share/nas/Projects/Featurability/masks/coda_00_masks/0.0_0.15'
     # masks_temp = sorted(os.listdir(mask_loc), key=lambda x: int(x.split('.')[0]))[f_start:f_end]
     # masks = []
@@ -85,7 +90,6 @@ if __name__ == "__main__":
     #     masks.append(mask_img)
 
     # mask_loc = '/mnt/share/nas/Projects/Featurability/masks/day2_davis_run1_masks/0.0_0.15'
-    
     # masks_temp = sorted([x for x in os.listdir(mask_loc) if x.endswith('.png')], key=lambda x: int(x.split('.')[0]))[f_start:f_end]
     # masks = []
     # for mask in tqdm(masks_temp):
@@ -121,15 +125,15 @@ if __name__ == "__main__":
     for n_features in [1000]:
     # for n_features in [1000]:
         for feat in features.keys():
-            for exp_type in ['KITTI']:
-            # for exp_type in ['KITTI','KITTI_masked']:
+            # for exp_type in ['KITTI']:
+            for exp_type in ['KITTI','KITTI_masked']:
             # for exp_type in ['CODA','CODA_masked']:
                 time.sleep(2)
                 # try:
-                if exp_type == 'KITTI':
+                if exp_type == 'KITTI' or exp_type == 'KITTI_masked':
                     config = Config(cfg_file='config_kitti.ini')
-                elif exp_type == 'KITTI_masked':
-                    config = Config(cfg_file='config_kitti_masked.ini')
+                # elif exp_type == 'KITTI_masked':
+                #     config = Config(cfg_file='config_kitti_masked.ini')
                 elif exp_type == 'CODA' or exp_type == 'CODA_masked':
                     config = Config(cfg_file='config_coda.ini')
                 elif exp_type == 'DAVIS' or exp_type == 'DAVIS_masked':
@@ -164,11 +168,11 @@ if __name__ == "__main__":
                 half_traj_img_size = int(0.5*traj_img_size)
                 draw_scale = 1
 
-                make_plots = True
+                make_plots = False
 
                 is_draw_3d = True
                 
-                is_draw_with_rerun = True
+                is_draw_with_rerun = False
                 if is_draw_with_rerun:
                     Rerun.init_vo()
                 else: 
