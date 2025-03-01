@@ -549,7 +549,7 @@ class KittiDataset(Dataset):
         self.timestamps = np.loadtxt(self.path + '/sequences/' + self.name + '/times.txt', dtype=np.float64)
         self.max_frame_id = len(self.timestamps)
         self.num_frames = self.max_frame_id
-        print('Processing KITTI Sequence of lenght: ', len(self.timestamps))
+        print('Processing KITTI Sequence of length: ', len(self.timestamps))
         
     def set_is_color(self,val):
         self.is_color = val 
@@ -562,7 +562,10 @@ class KittiDataset(Dataset):
         img = None
         if frame_id < self.max_frame_id:
             try: 
-                img = cv2.imread(self.path + '/sequences/' + self.name + self.image_left_path + str(frame_id).zfill(6) + '.png')
+                # ensure pre_string is always 10 characters
+                pre_string = f"{frame_id:010d}"
+                pre_string = str(frame_id).zfill(10)
+                img = cv2.imread(self.path + '/sequences/' + self.name + self.image_left_path + pre_string + '.png')
                 self._timestamp = self.timestamps[frame_id]
             except:
                 print('could not retrieve image: ', frame_id, ' in path ', self.path )
@@ -577,8 +580,11 @@ class KittiDataset(Dataset):
         print(f'[KittiDataset] getImageRight: {frame_id}')
         img = None
         if frame_id < self.max_frame_id:        
-            try: 
-                img = cv2.imread(self.path + '/sequences/' + self.name + self.image_right_path + str(frame_id).zfill(6) + '.png') 
+            try:
+                pre_string = f"{frame_id:010d}"
+                pre_string = str(frame_id).zfill(10)
+                img = cv2.imread(self.path + '/sequences/' + self.name + self.image_right_path + pre_string + '.png')
+                # img = cv2.imread(self.path + '/sequences/' + self.name + self.image_right_path + str(frame_id).zfill(6) + '.png') 
                 self._timestamp = self.timestamps[frame_id]        
             except:
                 print('could not retrieve image: ', frame_id, ' in path ', self.path )   

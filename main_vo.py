@@ -28,7 +28,7 @@ import platform
 from config import Config
 
 from visual_odometry import VisualOdometryEducational
-from visual_odometry_rgbd import VisualOdometryRgbd, VisualOdometryRgbdTensor
+# from visual_odometry_rgbd import VisualOdometryRgbd, VisualOdometryRgbdTensor
 from camera  import PinholeCamera
 from ground_truth import groundtruth_factory
 from dataset import dataset_factory, SensorType
@@ -136,7 +136,8 @@ if __name__ == "__main__":
     
     img_id = 0
     while True:
-        
+        if img_id > 700:
+            break
         img = None
 
         if dataset.isOk():
