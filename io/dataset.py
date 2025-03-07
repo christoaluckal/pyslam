@@ -142,7 +142,7 @@ def dataset_factory(config:'Config'):
     if type == 'video':
         dataset = VideoDataset(path, name, sensor_type, associations, timestamps, start_frame_id, DatasetType.VIDEO)   
     if type == 'folder':
-        fps = 10 # a default value 
+        fps = 30 # a default value 
         if 'fps' in dataset_settings:
             fps = int(dataset_settings['fps'])
         dataset = FolderDataset(path, name, sensor_type, fps, associations, timestamps, start_frame_id, DatasetType.FOLDER)      
@@ -213,7 +213,7 @@ class Dataset(object):
                 return cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)     
             else:
                 return img             
-        except:
+        except Exception as e:
             img = None
             self.is_ok = False
             if self.num_frames is not None and frame_id >= self.num_frames:
@@ -376,7 +376,7 @@ class FolderDataset(Dataset):
         self.maxlen = 1000000    
         print('Processing Image Directory Input')
         self.listing = glob.glob(path + '/' + self.name)
-        self.listing.sort()
+        self.listing.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
         self.listing = self.listing[::self.skip]
         #print('list of files: ', self.listing)
         self.maxlen = len(self.listing)
@@ -394,16 +394,17 @@ class FolderDataset(Dataset):
             return None
         image_file = self.listing[self.i]
         img = cv2.imread(image_file)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         pattern = re.compile(r'\d+')
         if self.timestamps is not None:
             # read timestamps from timestamps file
             self._timestamp = float(self.timestamps[self.i])
             self._next_timestamp = float(self.timestamps[self.i + 1])
 
-        elif pattern.search(image_file.split('/')[-1].split('.')[0]):
+        elif pattern.search(image_file.split('/')[-1].split('.')[0].split('_')[-1]):
             # read timestamps from image filename
-            self._timestamp = float(image_file.split('/')[-1].split('.')[0])
-            self._next_timestamp = float(self.listing[self.i + 1].split('/')[-1].split('.')[0])
+            self._timestamp = float(image_file.split('/')[-1].split('.')[0].split('_')[-1])
+            self._next_timestamp = float(self.listing[self.i + 1].split('/')[-1].split('.')[0].split('_')[-1])
         else:
             self._timestamp += self.Ts
             self._next_timestamp = self._timestamp + self.Ts 

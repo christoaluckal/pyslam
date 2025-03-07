@@ -105,8 +105,9 @@ class VisualOdometryBase:
         self.cur_depth = depth
         self.cur_timestamp = timestamp
         # manage and check stage 
+        a,b,c = None, None, None
         if(self.state == VoState.GOT_FIRST_IMAGE):
-            self.process_frame(frame_id)
+            a,b,c = self.process_frame(frame_id)
             self.update_history()   
         elif(self.state == VoState.NO_IMAGES_YET):
             self.process_first_frame(frame_id)
@@ -116,6 +117,7 @@ class VisualOdometryBase:
         self.prev_timestamp = self.cur_timestamp
         # update main timer (for profiling)
         self.timer_main.refresh()  
+        return a,b,c
          
 
     def update_history(self) -> None:

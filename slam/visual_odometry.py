@@ -185,6 +185,8 @@ class VisualOdometryEducational(VisualOdometryBase):
                 print('# new detected points: ', self.kps_cur.shape[0])                  
         self.kps_ref = self.kps_cur
         self.des_ref = self.des_cur
+
+        return self.num_matched_kps, self.num_inliers, self.average_pixel_shift
         
 
     def drawFeatureTracks(self, img, reinit = False):
