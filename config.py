@@ -327,4 +327,6 @@ class Config(object):
    
 if __name__ != "__main__":
     # we automatically read lib path when this file is called via 'import'
-    cfg = Config()
+    import os
+    config_loc = os.environ.get('PYSLAM_CONFIG')
+    cfg = Config(config_file=config_loc)
