@@ -133,30 +133,33 @@ class MatcherUtils:
     @staticmethod    
     def goodMatchesOneToOne(matches, des1, des2, ratio_test=0.7):
         #len_des2 = len(des2)
-        idxs1, idxs2 = [], []           
-        if matches is not None:         
-            float_inf = float('inf')
-            dist_match = defaultdict(lambda: float_inf)   
-            index_match = dict()  
-            for m, n in matches:
-                if m.distance > ratio_test * n.distance:
-                    continue     
-                dist = dist_match[m.trainIdx]
-                if dist == float_inf: 
-                    # trainIdx has not been matched yet
-                    dist_match[m.trainIdx] = m.distance
-                    idxs1.append(m.queryIdx)
-                    idxs2.append(m.trainIdx)
-                    index_match[m.trainIdx] = len(idxs2)-1
-                else:
-                    if m.distance < dist: 
-                        # we have already a match for trainIdx: if stored match is worse => replace it
-                        #print("double match on trainIdx: ", m.trainIdx)
-                        index = index_match[m.trainIdx]
-                        assert(idxs2[index] == m.trainIdx) 
-                        idxs1[index]=m.queryIdx
-                        idxs2[index]=m.trainIdx
-        return np.array(idxs1), np.array(idxs2)
+        idxs1, idxs2 = [], []
+        try:           
+            if matches is not None:         
+                float_inf = float('inf')
+                dist_match = defaultdict(lambda: float_inf)   
+                index_match = dict()  
+                for m, n in matches:
+                    if m.distance > ratio_test * n.distance:
+                        continue     
+                    dist = dist_match[m.trainIdx]
+                    if dist == float_inf: 
+                        # trainIdx has not been matched yet
+                        dist_match[m.trainIdx] = m.distance
+                        idxs1.append(m.queryIdx)
+                        idxs2.append(m.trainIdx)
+                        index_match[m.trainIdx] = len(idxs2)-1
+                    else:
+                        if m.distance < dist: 
+                            # we have already a match for trainIdx: if stored match is worse => replace it
+                            #print("double match on trainIdx: ", m.trainIdx)
+                            index = index_match[m.trainIdx]
+                            assert(idxs2[index] == m.trainIdx) 
+                            idxs1[index]=m.queryIdx
+                            idxs2[index]=m.trainIdx
+            return np.array(idxs1), np.array(idxs2)
+        except Exception as e:
+            return np.array([]), np.array([])
 
     # input: des1 = query-descriptors, des2 = train-descriptors
     # output: idxs1, idxs2  (vectors of corresponding indexes in des1 and des2, respectively)
@@ -514,8 +517,13 @@ class FeatureMatcher:
                     DMatch.trainIdx - Index of the descriptor in train descriptors
                     DMatch.queryIdx - Index of the descriptor in query descriptors
                     DMatch.imgIdx - Index of the train image.
-                """            
-                matches = matcher.knnMatch(des1, des2, k=2)  #knnMatch(queryDescriptors,trainDescriptors)
+                """      
+                # print(f'des1.shape: {des1.shape}, des2.shape: {des2.shape}')     
+                try:
+                    matches = matcher.knnMatch(des1, des2, k=2)  #knnMatch(queryDescriptors,trainDescriptors)
+                except Exception as e:
+                    matches = None
+                #matches = matcher.knnMatch(des1, des2, k=2)  #knnMatch(queryDescriptors,trainDescriptors)
                 #return MatcherUtils.goodMatchesSimple(matches, des1, des2, ratio_test)   # <= N.B.: this generates problem in SLAM since it can produce matches where a trainIdx index is associated to two (or more) queryIdx indexes
                 idxs1, idxs2 = MatcherUtils.goodMatchesOneToOne(matches, des1, des2, ratio_test)                    
             else: 

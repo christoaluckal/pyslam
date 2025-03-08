@@ -371,7 +371,7 @@ class FolderDataset(Dataset):
         self.fps = fps 
         print('fps: ', self.fps)  
         self.Ts = 1./self.fps 
-        self.skip=1
+        self.skip=3
         self.listing = []    
         self.maxlen = 1000000    
         print('Processing Image Directory Input')
@@ -390,28 +390,28 @@ class FolderDataset(Dataset):
             self.timestamps = self._read_timestamps(path + '/' + timestamps)
         
     def getImage(self, frame_id):
-        if self.i == self.maxlen:
+        if frame_id == self.maxlen:
             return None
-        image_file = self.listing[self.i]
+        image_file = self.listing[frame_id]
         img = cv2.imread(image_file)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         pattern = re.compile(r'\d+')
         if self.timestamps is not None:
             # read timestamps from timestamps file
-            self._timestamp = float(self.timestamps[self.i])
-            self._next_timestamp = float(self.timestamps[self.i + 1])
+            self._timestamp = float(self.timestamps[frame_id])
+            self._next_timestamp = float(self.timestamps[frame_id + 1])
 
         elif pattern.search(image_file.split('/')[-1].split('.')[0].split('_')[-1]):
             # read timestamps from image filename
             self._timestamp = float(image_file.split('/')[-1].split('.')[0].split('_')[-1])
-            self._next_timestamp = float(self.listing[self.i + 1].split('/')[-1].split('.')[0].split('_')[-1])
+            self._next_timestamp = float(self.listing[frame_id + 1].split('/')[-1].split('.')[0].split('_')[-1])
         else:
             self._timestamp += self.Ts
             self._next_timestamp = self._timestamp + self.Ts 
         if img is None: 
             raise IOError('error reading file: ', image_file)               
         # Increment internal counter.
-        self.i = self.i + 1
+        # self.i = self.i + 1
         return img
 
 

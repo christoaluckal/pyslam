@@ -168,7 +168,7 @@ FOLDER_DATASET:
   name: '*png'  
   settings: settings/KITTI00-02.yaml
   groundtruth_file: groundtruth.txt
-  fps: 20 
+  fps: 40 
 
 
 SYSTEM_STATE: 

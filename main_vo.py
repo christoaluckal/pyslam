@@ -92,7 +92,6 @@ def run_exp(name, feature, max_images=10):
     # base_nh: /home/caluckal/Developer/spring2025/nighthawk/118-2-nh1-images
     
     dataset = dataset_factory(config)
-
     groundtruth = groundtruth_factory(config.dataset_settings)
 
     cam = PinholeCamera(config)
@@ -152,8 +151,15 @@ def run_exp(name, feature, max_images=10):
     
     img_id = 0
     while True:
-        if img_id > max_images:
+        # if img_id >= dataset.num_frames -1 and max_images is None:
+        #     break
+        # if img_id >= max_images:
+        #     break
+        if max_images is not None and img_id >= max_images:
             break
+        if max_images is None and img_id >= dataset.num_frames-1:
+            break
+
         img = None
 
         if dataset.isOk():
@@ -164,7 +170,6 @@ def run_exp(name, feature, max_images=10):
         if img is not None:
 
             matched_kp, num_inlier, px_shift = vo.track(img, depth, img_id, timestamp)  # main VO function 
-
             if matched_kp is not None:
                 matched_kps.append(matched_kp)
                 num_inliers.append(num_inlier)
@@ -284,7 +289,7 @@ def run_exp(name, feature, max_images=10):
     ax[0].legend()
     ax[1].plot(idxs, px_shifts, label='px_shifts')
     ax[1].legend()
-    plt.savefig(f'nighthawk_{config_name}_{name}.png')
+    plt.savefig(f'nh_data/nighthawk_{config_name}_{name}.png')
     plt.close()
     # except Exception as e:
     #     print(f'Error in {name}: {e}')
@@ -298,30 +303,28 @@ def run_exp(name, feature, max_images=10):
     #     plt.savefig(f'nighthawk_{config_name}_{name}.png')
     #     plt.close()
 
+    # write csv
+    with open(f'nh_data/nighthawk_{config_name}_{name}.csv', 'w') as f:
+        f.write('frame_id,matched_kps,num_inliers,px_shifts\n')
+        for i in range(len(matched_kps)):
+            f.write(f'{i*dataset.skip},{matched_kps[i]},{num_inliers[i]},{px_shifts[i]}\n')
 
 if __name__ == "__main__":
 
     # set PYSLAM_CONFIG environment variable to the path of the settings file
     feature_dict = {
-        # "LK_SHI_TOMASI": FeatureTrackerConfigs.LK_SHI_TOMASI,
-        # "LK_FAST": FeatureTrackerConfigs.LK_FAST,
-        # "SHI_TOMASI_ORB": FeatureTrackerConfigs.SHI_TOMASI_ORB,
-        # "FAST_ORB": FeatureTrackerConfigs.FAST_ORB,
-        # "ORB": FeatureTrackerConfigs.ORB,
-        # "BRISK": FeatureTrackerConfigs.BRISK,
-        # "AKAZE": FeatureTrackerConfigs.AKAZE,
-        # "SIFT": FeatureTrackerConfigs.SIFT,
-        # "ROOT_SIFT": FeatureTrackerConfigs.ROOT_SIFT,
-        # "SUPERPOINT": FeatureTrackerConfigs.SUPERPOINT,
-        # "LIGHTGLUE": FeatureTrackerConfigs.LIGHTGLUE,
-        # "XFEAT": FeatureTrackerConfigs.XFEAT,
-        # "XFEAT_XFEAT": FeatureTrackerConfigs.XFEAT_XFEAT,
-        # "LOFTR": FeatureTrackerConfigs.LOFTR
+        "LK_SHI_TOMASI": FeatureTrackerConfigs.LK_SHI_TOMASI,
+        "LK_FAST": FeatureTrackerConfigs.LK_FAST,
+        "ORB": FeatureTrackerConfigs.ORB,
+        "BRISK": FeatureTrackerConfigs.BRISK,
+        "AKAZE": FeatureTrackerConfigs.AKAZE,
+        "SIFT": FeatureTrackerConfigs.SIFT,
+        "SUPERPOINT": FeatureTrackerConfigs.SUPERPOINT,
         "R2D2": FeatureTrackerConfigs.R2D2
     }
     for key,val in feature_dict.items():
         # try:
-        run_exp(key,val,1000)
+        run_exp(key,val,None)
         # except Exception as e:
             # print(f'Error in {key}: {e}')
             # pass
