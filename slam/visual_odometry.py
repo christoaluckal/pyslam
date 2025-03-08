@@ -35,7 +35,7 @@ kMinNumFeature = 2000
 kRansacThresholdNormalized = 0.0004            # metric threshold used for normalized image coordinates (originally 0.0003)
 kRansacThresholdPixels = 0.1                   # pixel threshold used for image coordinates 
 kUseEssentialMatrixEstimation = True           # using the essential matrix fitting algorithm is more robust RANSAC given five-point algorithm solver 
-kRansacProb = 0.999                            # (originally 0.999)
+kRansacProb = 0.85                            # (originally 0.999)
 kMinAveragePixelShiftForMotionEstimation = 1.5 # if the average pixel shift is below this threshold, motion is considered to be small enough to be ignored
 
 kUseGroundTruthScale = True 
@@ -50,7 +50,7 @@ kAbsoluteScaleThresholdIndoor = 0.015          # absolute translation scale; it 
 # With this very basic approach, you need to use a ground truth in order to recover a reasonable inter-frame scale $s$ and estimate a 
 # valid trajectory by composing $C_k = C_{k-1} * [R_{k-1,k}, s t_{k-1,k}]$. 
 class VisualOdometryEducational(VisualOdometryBase):
-    def __init__(self, cam: Camera, groundtruth: GroundTruth, feature_tracker: FeatureTracker):
+    def __init__(self, cam: Camera, groundtruth: GroundTruth, feature_tracker: FeatureTracker, is_color: bool = False) -> None:
         super().__init__(cam=cam, groundtruth=groundtruth)      
         
         self.kps_ref = None  # reference keypoints 
@@ -70,6 +70,8 @@ class VisualOdometryEducational(VisualOdometryBase):
             
         self.timer_pose_est = TimerFps('PoseEst', is_verbose = self.timer_verbose)
         self.timer_feat = TimerFps('Feature', is_verbose = self.timer_verbose)
+
+        self.is_color = is_color
 
         
     def computeFundamentalMatrix(self, kps_ref, kps_cur):
@@ -127,7 +129,7 @@ class VisualOdometryEducational(VisualOdometryBase):
 
     def process_first_frame(self, frame_id) -> None:
         # convert image to gray if needed    
-        if self.cur_image.ndim>2:
+        if self.cur_image.ndim>2 and not self.is_color:
             self.cur_image = cv2.cvtColor(self.cur_image,cv2.COLOR_RGB2GRAY)                
         # only detect on the current image 
         self.kps_ref, self.des_ref = self.feature_tracker.detectAndCompute(self.cur_image)
@@ -137,7 +139,7 @@ class VisualOdometryEducational(VisualOdometryBase):
 
     def process_frame(self, frame_id) -> None:
         # convert image to gray if needed    
-        if self.cur_image.ndim>2:
+        if self.cur_image.ndim>2 and not self.is_color:
             self.cur_image = cv2.cvtColor(self.cur_image,cv2.COLOR_RGB2GRAY)                
         # track features 
         self.timer_feat.start()
@@ -190,25 +192,26 @@ class VisualOdometryEducational(VisualOdometryBase):
         
 
     def drawFeatureTracks(self, img, reinit = False):
-        draw_img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
-        num_outliers = 0         
-        if self.state == VoState.GOT_FIRST_IMAGE:                      
-            if reinit:
-                for p1 in self.kps_cur:
-                    a,b = p1.ravel()
-                    cv2.circle(draw_img,(a,b),1, (0,255,0),-1)                    
-            else:    
-                print(f'drawing feature tracks, num features matched: {len(self.track_result.kps_ref_matched)}')
-                for i,pts in enumerate(zip(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)):
-                    drawAll = False # set this to true if you want to draw outliers 
-                    if self.mask_match[i] or drawAll:
-                        p1, p2 = pts 
-                        a,b = p1.astype(int).ravel()
-                        c,d = p2.astype(int).ravel()
-                        cv2.line(draw_img, (a,b),(c,d), (0,255,0), 1)
-                        cv2.circle(draw_img,(a,b),1, (0,0,255),-1)   
-                    else:
-                        num_outliers+=1
-            if kVerbose:
-                print('# outliers: ', num_outliers)     
-        return draw_img            
+        # draw_img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+        # num_outliers = 0         
+        # if self.state == VoState.GOT_FIRST_IMAGE:                      
+        #     if reinit:
+        #         for p1 in self.kps_cur:
+        #             a,b = p1.ravel()
+        #             cv2.circle(draw_img,(a,b),1, (0,255,0),-1)                    
+        #     else:    
+        #         print(f'drawing feature tracks, num features matched: {len(self.track_result.kps_ref_matched)}')
+        #         for i,pts in enumerate(zip(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)):
+        #             drawAll = False # set this to true if you want to draw outliers 
+        #             if self.mask_match[i] or drawAll:
+        #                 p1, p2 = pts 
+        #                 a,b = p1.astype(int).ravel()
+        #                 c,d = p2.astype(int).ravel()
+        #                 cv2.line(draw_img, (a,b),(c,d), (0,255,0), 1)
+        #                 cv2.circle(draw_img,(a,b),1, (0,0,255),-1)   
+        #             else:
+        #                 num_outliers+=1
+        #     if kVerbose:
+        #         print('# outliers: ', num_outliers)     
+        # return draw_img            
+        return img
