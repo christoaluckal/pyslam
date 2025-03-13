@@ -145,6 +145,7 @@ class VisualOdometryEducational(VisualOdometryBase):
         # convert from list of keypoints to an array of points 
         self.kps_ref = np.array([x.pt for x in self.kps_ref], dtype=np.float32) if self.kps_ref is not None else None
         self.draw_img = self.drawFeatureTracks(self.cur_image)
+        return self.kps_ref, self.des_ref
 
     def process_frame(self, frame_id) -> None:
         # convert image to gray if needed    
@@ -207,7 +208,7 @@ class VisualOdometryEducational(VisualOdometryBase):
         self.kps_ref = self.kps_cur
         self.des_ref = self.des_cur
 
-        return self.num_matched_kps, self.num_inliers, self.average_pixel_shift
+        return self.num_matched_kps, self.num_inliers, self.average_pixel_shift, self.kpn_cur, self.des_cur
         
 
     def drawFeatureTracks(self, img, reinit = False):

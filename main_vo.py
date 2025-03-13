@@ -27,6 +27,8 @@ import platform
 
 from config import Config
 
+from tqdm import tqdm
+
 from visual_odometry import VisualOdometryEducational
 # from visual_odometry_rgbd import VisualOdometryRgbd, VisualOdometryRgbdTensor
 from camera  import PinholeCamera
@@ -53,6 +55,8 @@ kScriptFolder = os.path.dirname(kScriptPath)
 kRootFolder = kScriptFolder
 kResultsFolder = kRootFolder + '/results'
 
+import cv2
+bf = cv2.BFMatcher(cv2.NORM_L2)
 
 kUseRerun = True
 # check rerun does not have issues 
@@ -148,8 +152,11 @@ def run_exp(name, feature, max_images=10):
     matched_kps = []
     num_inliers = []
     px_shifts = []
+    kps = []
+    des = []
     
     img_id = 0
+    images = []
     while True:
         # if img_id >= dataset.num_frames -1 and max_images is None:
         #     break
@@ -168,12 +175,17 @@ def run_exp(name, feature, max_images=10):
             depth = dataset.getDepth(img_id)
 
         if img is not None:
-
-            matched_kp, num_inlier, px_shift = vo.track(img, depth, img_id, timestamp)  # main VO function 
+            images.append(img)
+            matched_kp, num_inlier, px_shift, kp_cur, des_cur = vo.track(img, depth, img_id, timestamp)  # main VO function 
             if matched_kp is not None:
                 matched_kps.append(matched_kp)
                 num_inliers.append(num_inlier)
                 px_shifts.append(px_shift)
+                kps.append(kp_cur)
+                des.append(des_cur)
+            else:
+                kps.append([])
+                des.append(None)
 
             if(len(vo.traj3d_est)>1):	       # start drawing from the third image (when everything is initialized and flows in a normal way)
 
@@ -304,6 +316,102 @@ def run_exp(name, feature, max_images=10):
     #     plt.savefig(f'nighthawk_{config_name}_{name}.png')
     #     plt.close()
 
+    # Initialize an empty list to store matches between consecutive frames
+    matches_list = []
+
+    
+
+    # Loop over consecutive pairs of frames
+    for i in range(len(des) - 1):
+        des1 = des[i]
+        des2 = des[i + 1]
+
+        # If either descriptor is None, we simply append an empty match list
+        if des1 is None or des2 is None:
+            matches = []
+        else:
+            # Match features using BFMatcher and sort the matches based on distance
+            matches = bf.match(des1, des2)
+            matches = sorted(matches, key=lambda x: x.distance)
+        
+        # Append the matches corresponding to frame i (matched with frame i+1)
+        matches_list.append(matches)
+
+    tracks = {}
+    next_track_id = 0
+
+    for i in range(len(des)):
+        if des[i] is not None and des[i].dtype != np.float32:
+            des[i] = des[i].astype(np.float32)
+
+    # Process each frame as a starting point
+    for start_frame in tqdm(range(len(images) - 1)):
+        # Initialize new tracks for features in this frame
+        current_features = {i: next_track_id + i for i in range(len(kps[start_frame]))}
+        
+        # Add new features to tracks
+        for i in range(len(kps[start_frame])):
+            tracks[next_track_id + i] = [(start_frame, i)]
+        
+        next_track_id += len(kps[start_frame])
+
+        # Track these features in subsequent frames
+        prev_descriptors = des[start_frame]
+        prev_features = current_features
+
+        if prev_descriptors is None:
+            continue  # Skip frames without descriptors
+
+        for frame_idx in range(start_frame + 1, len(images)):
+            current_descriptors = des[frame_idx]
+
+            if current_descriptors is None:
+                continue  # Skip frames without descriptors
+
+            # Ensure descriptors are of the same type
+            if prev_descriptors.dtype != np.float32:
+                prev_descriptors = prev_descriptors.astype(np.float32)
+            if current_descriptors.dtype != np.float32:
+                current_descriptors = current_descriptors.astype(np.float32)
+
+            matches = bf.knnMatch(prev_descriptors, current_descriptors, k=2)
+
+            # Apply Lowe’s ratio test
+            good_matches = []
+            for match in matches:
+                if len(match) >= 2:
+                    m, n = match[:2]
+                    if m.distance < 0.75 * n.distance:
+                        good_matches.append(m)
+
+            # Update tracks with good matches
+            new_features = {}
+            for match in good_matches:
+                query_idx = match.queryIdx  # Previous frame feature
+                train_idx = match.trainIdx  # Current frame feature
+                
+                if query_idx in prev_features:
+                    track_id = prev_features[query_idx]
+                    tracks[track_id].append((frame_idx, train_idx))
+                    new_features[train_idx] = track_id  # Carry forward to next frame
+
+            # Prepare for the next frame
+            prev_descriptors = current_descriptors
+            prev_features = new_features
+
+    plt.figure(figsize=(24, 12))
+    for track_id, track in tqdm(tracks.items()):
+        frames = [f for f, _ in track]
+        plt.plot([track_id] * len(frames), frames, marker='o', linestyle='-', lw=0.05)
+
+    plt.xlabel('Feature Track ID ')
+    plt.ylabel('Frame ID')
+    plt.title('Feature Tracks Over Multiple Frames - Nighthawk Seq1')
+    plt.gca().invert_yaxis() 
+    plt.savefig(f'nh_data/nighthawk_{config_name}_{name}_tracks.png')
+    plt.close()
+
+
     # write csv
     with open(f'nh_data/nighthawk_{config_name}_{name}.csv', 'w') as f:
         f.write('frame_id,matched_kps,num_inliers,px_shifts\n')
@@ -325,7 +433,7 @@ if __name__ == "__main__":
     }
     for key,val in feature_dict.items():
         # try:
-        run_exp(key,val,None)
+        run_exp(key,val,10)
         # except Exception as e:
             # print(f'Error in {key}: {e}')
             # pass
