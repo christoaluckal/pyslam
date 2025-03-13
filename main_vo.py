@@ -277,6 +277,7 @@ def run_exp(name, feature, max_images=10):
 
     # 
     idxs = range(len(matched_kps))
+    idxs = [i*dataset.skip for i in idxs]
     # plt.figure()
     # plt.plot(idxs, matched_kps, label='matched_kps')
     # plt.plot(idxs, num_inliers, label='num_inliers')

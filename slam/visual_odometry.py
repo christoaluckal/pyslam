@@ -117,13 +117,22 @@ class VisualOdometryEducational(VisualOdometryBase):
             except: 
                 ransac_method = cv2.RANSAC
             # the essential matrix algorithm is more robust since it uses the five-point algorithm solver by D. Nister (see the notes and paper above )
-            E, self.mask_match = cv2.findEssentialMat(self.kpn_cur, self.kpn_ref, focal=1, pp=(0., 0.), method=ransac_method, prob=kRansacProb, threshold=kRansacThresholdNormalized)
+            try:
+                E, self.mask_match = cv2.findEssentialMat(self.kpn_cur, self.kpn_ref, focal=1, pp=(0., 0.), method=ransac_method, prob=kRansacProb, threshold=kRansacThresholdNormalized)
+            except:
+                E = np.eye(3)
+                self.mask_match = np.ones((self.kpn_cur.shape[0],1), dtype=bool)
         else:
             # just for the hell of testing fundamental matrix fitting ;-) 
             F, self.mask_match = self.computeFundamentalMatrix(kp_cur_u, kp_ref_u)
             E = self.cam.K.T @ F @ self.cam.K    # E = K.T * F * K 
         #self.removeOutliersFromMask(self.mask)  # do not remove outliers, the last unmatched/outlier features can be matched and recognized as inliers in subsequent frames                          
-        self.pose_estimation_inliers, R, t, mask = cv2.recoverPose(E, self.kpn_cur, self.kpn_ref, focal=1, pp=(0., 0.))   
+        try:  
+            self.pose_estimation_inliers, R, t, mask = cv2.recoverPose(E, self.kpn_cur, self.kpn_ref, focal=1, pp=(0., 0.))   
+        except:
+            R = np.eye(3)
+            t = np.zeros((3,1))
+            self.pose_estimation_inliers = 0
         print(f'num inliers in pose estimation: {self.pose_estimation_inliers}')
         return R,t  # Rrc, trc (with respect to 'ref' frame) 		
 
@@ -143,11 +152,18 @@ class VisualOdometryEducational(VisualOdometryBase):
             self.cur_image = cv2.cvtColor(self.cur_image,cv2.COLOR_RGB2GRAY)                
         # track features 
         self.timer_feat.start()
+        # print(f"kps_ref: {self.kps_ref.shape}, des_ref: {self.des_ref.shape}")
         self.track_result = self.feature_tracker.track(self.prev_image, self.cur_image, self.kps_ref, self.des_ref)
         self.timer_feat.refresh()
         # estimate pose 
         self.timer_pose_est.start()
-        R, t = self.estimatePose(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)     
+        try:
+            R, t = self.estimatePose(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)     
+        except Exception as e:
+            print(f'Error in pose estimation: {e}')
+            R = np.eye(3)
+            t = np.zeros((3,1))
+            self.pose_estimation_inliers = 0
         self.timer_pose_est.refresh()
         # update keypoints history  
         self.kps_ref = self.track_result.kps_ref
@@ -156,7 +172,10 @@ class VisualOdometryEducational(VisualOdometryBase):
         self.num_matched_kps = self.kpn_ref.shape[0] 
         self.num_inliers =  np.sum(self.mask_match)
         #compute average delta pixel shift
-        self.average_pixel_shift = np.mean(np.abs(self.track_result.kps_ref_matched - self.track_result.kps_cur_matched))
+        try:
+            self.average_pixel_shift = np.mean(np.abs(self.track_result.kps_ref_matched - self.track_result.kps_cur_matched))
+        except Exception as e:
+            self.average_pixel_shift = np.nan
         print(f'average pixel shift: {self.average_pixel_shift}')
         if kVerbose:        
             matcher_type = self.feature_tracker.matcher.matcher_type.name if self.feature_tracker.matcher is not None else self.feature_tracker.matcher_type
