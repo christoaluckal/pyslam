@@ -371,7 +371,7 @@ class FolderDataset(Dataset):
         self.fps = fps 
         print('fps: ', self.fps)  
         self.Ts = 1./self.fps 
-        self.skip=3
+        self.skip=1
         self.listing = []    
         self.maxlen = 1000000    
         print('Processing Image Directory Input')

@@ -24,7 +24,7 @@ import os
 import math
 import time 
 import platform 
-
+import pickle
 from config import Config
 
 from tqdm import tqdm
@@ -404,13 +404,16 @@ def run_exp(name, feature, max_images=10):
         frames = [f for f, _ in track]
         plt.plot([track_id] * len(frames), frames, marker='o', linestyle='-', lw=0.05)
 
+
     plt.xlabel('Feature Track ID ')
     plt.ylabel('Frame ID')
-    plt.title('Feature Tracks Over Multiple Frames - Nighthawk Seq1')
+    plt.title(f'Feature Tracks Over Multiple Frames - {name}')
     plt.gca().invert_yaxis() 
     plt.savefig(f'nh_data/nighthawk_{config_name}_{name}_tracks.png')
     plt.close()
 
+    with open(f'nh_data/nighthawk_{config_name}_{name}_tracks.pkl', 'wb') as f:
+        pickle.dump(tracks, f)
 
     # write csv
     with open(f'nh_data/nighthawk_{config_name}_{name}.csv', 'w') as f:
@@ -432,8 +435,8 @@ if __name__ == "__main__":
         "R2D2": FeatureTrackerConfigs.R2D2
     }
     for key,val in feature_dict.items():
-        # try:
-        run_exp(key,val,10)
-        # except Exception as e:
-            # print(f'Error in {key}: {e}')
-            # pass
+        try:
+            run_exp(key,val,None)
+        except Exception as e:
+            print(f'Error in {key}: {e}')
+            pass
