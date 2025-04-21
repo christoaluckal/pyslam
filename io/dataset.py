@@ -115,6 +115,8 @@ def dataset_factory(config:'Config'):
     
     path = dataset_settings['base_path'] 
     path = os.path.expanduser(path)
+    mask_path = dataset_settings['mask_path'] if 'mask_path' in dataset_settings else None
+    mask_path = os.path.expanduser(mask_path) if mask_path is not None else None
     
     start_frame_id = 0
     if 'start_frame_id' in dataset_settings:
@@ -145,7 +147,7 @@ def dataset_factory(config:'Config'):
         fps = 30 # a default value 
         if 'fps' in dataset_settings:
             fps = int(dataset_settings['fps'])
-        dataset = FolderDataset(path, name, sensor_type, fps, associations, timestamps, start_frame_id, DatasetType.FOLDER)      
+        dataset = FolderDataset(path, name, sensor_type, fps, associations, timestamps, start_frame_id, DatasetType.FOLDER, mask_path)      
     if type == 'live':
         dataset = LiveDataset(path, name, sensor_type, associations, start_frame_id, DatasetType.LIVE)   
            
@@ -156,8 +158,9 @@ def dataset_factory(config:'Config'):
 
 class Dataset(object):
     def __init__(self, path, name, sensor_type=SensorType.MONOCULAR, fps=None, associations=None, start_frame_id=0, 
-                 type=DatasetType.NONE, environment_type=DatasetEnvironmentType.OUTDOOR):
+                 type=DatasetType.NONE, environment_type=DatasetEnvironmentType.OUTDOOR, mask_path=None):
         self.path = path 
+        self.mask_path = mask_path
         self.name = name 
         self.type = type    
         self.sensor_type = sensor_type
@@ -189,7 +192,7 @@ class Dataset(object):
         return self.environment_type
 
     def getImage(self, frame_id):
-        return None 
+        return None, None 
 
     def getImageRight(self, frame_id):
         return None
@@ -206,13 +209,13 @@ class Dataset(object):
                 self.is_ok = False
             return None
         try: 
-            img = self.getImage(frame_id)
+            img,mask = self.getImage(frame_id)
             if img is None:
                 return None
             if img.ndim == 2:
                 return cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)     
             else:
-                return img             
+                return img,mask             
         except Exception as e:
             img = None
             self.is_ok = False
@@ -220,7 +223,7 @@ class Dataset(object):
                 Printer.yellow(f'Dataset end: {self.name}, path: {self.path}, frame id: {frame_id}')
             else:    
                 Printer.red(f'Cannot open dataset: {self.name}, path: {self.path}, frame id: {frame_id}')
-            return img    
+            return img, mask    
         
     # Adjust frame id with start frame id only here
     def getImageColorRight(self, frame_id):
@@ -362,7 +365,7 @@ class LiveDataset(Dataset):
 
 
 class FolderDataset(Dataset): 
-    def __init__(self, path, name, sensor_type=SensorType.MONOCULAR, fps=None, associations=None, timestamps=None, start_frame_id=0, type=DatasetType.VIDEO): 
+    def __init__(self, path, name, sensor_type=SensorType.MONOCULAR, fps=None, associations=None, timestamps=None, start_frame_id=0, type=DatasetType.VIDEO, mask_path=None): 
         super().__init__(path, name, sensor_type, fps, associations, start_frame_id, type)
         if sensor_type != SensorType.MONOCULAR:
             raise ValueError('Video dataset only supports MONOCULAR sensor type')        
@@ -378,6 +381,14 @@ class FolderDataset(Dataset):
         self.listing = glob.glob(path + '/' + self.name)
         self.listing.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
         self.listing = self.listing[::self.skip]
+        self.mask_path = mask_path
+        if self.mask_path is not None:
+            self.mask_listing = glob.glob(self.mask_path + '/' + self.name)
+            self.mask_listing.sort(key=lambda x: int(x.split('_')[-1].split('.')[0]))
+            self.mask_listing = self.mask_listing[::self.skip]
+            if len(self.listing) != len(self.mask_listing):
+                raise ValueError('Number of images and masks do not match!')
+            
         #print('list of files: ', self.listing)
         self.maxlen = len(self.listing)
         self.num_frames = self.maxlen
@@ -393,7 +404,10 @@ class FolderDataset(Dataset):
         if frame_id == self.maxlen:
             return None
         image_file = self.listing[frame_id]
+        mask_file = self.mask_listing[frame_id] if self.mask_path is not None else None
         img = cv2.imread(image_file)
+        if mask_file is not None:
+            mask = cv2.imread(mask_file)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         pattern = re.compile(r'\d+')
         if self.timestamps is not None:
@@ -412,7 +426,7 @@ class FolderDataset(Dataset):
             raise IOError('error reading file: ', image_file)               
         # Increment internal counter.
         # self.i = self.i + 1
-        return img
+        return img, mask
 
 
 class FolderDatasetParallelStatus:

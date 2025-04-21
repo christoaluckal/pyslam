@@ -115,6 +115,8 @@ class Config(object):
         self.sensor_type = self.dataset_settings['sensor_type'].lower()
         self.dataset_path = self.dataset_settings['base_path']
         self.dataset_settings['base_path'] = os.path.join( self.root_folder, self.dataset_path)
+        self.mask_path = self.dataset_settings['mask_path'] if 'mask_path' in self.dataset_settings else None
+        self.dataset_settings['mask_path'] = os.path.join( self.root_folder, self.mask_path) if self.mask_path is not None else None
         #print('dataset_settings: ', self.dataset_settings)
                     
     # get general system settings

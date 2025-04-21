@@ -100,7 +100,7 @@ class Rerun:
     # =================================================================================== 
 
     @staticmethod
-    def log_3d_camera_img_seq(frame_id: int, img, depth, camera: Camera, camera_pose) -> None:
+    def log_3d_camera_img_seq(frame_id: int, img, mask, depth, camera: Camera, camera_pose) -> None:
                 
         R = camera_pose[:3, :3]
         t = camera_pose[:3, 3]
@@ -122,16 +122,21 @@ class Rerun:
             new_width = int(float(img.shape[1]) * Rerun.camera_img_resize_factors[1])
             new_height = int(float(img.shape[0]) * Rerun.camera_img_resize_factors[0])
             bgr = cv2.resize(img, (new_width, new_height))
+            mask_bgr = cv2.resize(mask, (new_width, new_height))
             if depth is not None:
                 depth = cv2.resize(depth, (new_width, new_height))
         else: 
             bgr = img
+            mask_bgr = mask
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        mask_rgb = cv2.cvtColor(mask_bgr, cv2.COLOR_BGR2RGB)
         
         if Rerun.img_compress:        
             rr.log("world/camera/image", rr.Image(rgb).compress(jpeg_quality=Rerun.img_compress_jpeg_quality))
+            rr.log("world/camera/mask", rr.Image(mask_rgb).compress(jpeg_quality=Rerun.img_compress_jpeg_quality))
         else: 
             rr.log("world/camera/image", rr.Image(rgb))
+            rr.log("world/camera/mask", rr.Image(mask_rgb))
 
         if depth is not None:
             rr.log("world/camera/depth", rr.DepthImage(depth, meter=1.0, colormap="viridis"))

@@ -160,12 +160,13 @@ VIDEO_DATASET:
 FOLDER_DATASET:
   type: folder 
   sensor_type: mono   # Here, 'sensor_type' can be only 'mono' 
-  base_path: /home/caluckal/Developer/spring2025/nighthawk/118-2-baseline-images
+  base_path: /home/christoa/extract/images
+  mask_path: /home/christoa/extract/masks
   # base_path_baseline: /home/caluckal/Developer/spring2025/nighthawk/118-2-baseline-images
   # base_path_fixed: /home/caluckal/Developer/spring2025/nighthawk/118-2-fixlight-images
   # base_nh: /home/caluckal/Developer/spring2025/nighthawk/118-2-nh1-images
   # 'name' is used for specifying a glob pattern, e.g. *png, *jpeg, etc...
-  name: '*png'  
+  name: '*jpg'  
   settings: settings/KITTI00-02.yaml
   groundtruth_file: groundtruth.txt
   fps: 40 

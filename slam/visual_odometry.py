@@ -110,6 +110,9 @@ class VisualOdometryEducational(VisualOdometryBase):
         kp_cur_u = self.cam.undistort_points(kps_cur)	        
         self.kpn_ref = self.cam.unproject_points(kp_ref_u)
         self.kpn_cur = self.cam.unproject_points(kp_cur_u)
+
+        # remove using mask
+
         if kUseEssentialMatrixEstimation:
             ransac_method = None 
             try: 

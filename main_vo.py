@@ -48,7 +48,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 
-global_plotting = False
+global_plotting = True
 
 kScriptPath = os.path.realpath(__file__)
 kScriptFolder = os.path.dirname(kScriptPath)
@@ -171,7 +171,7 @@ def run_exp(name, feature, max_images=10):
 
         if dataset.isOk():
             timestamp = dataset.getTimestamp()          # get current timestamp 
-            img = dataset.getImageColor(img_id)
+            img,mask = dataset.getImageColor(img_id)
             depth = dataset.getDepth(img_id)
 
         if img is not None:
@@ -217,7 +217,7 @@ def run_exp(name, feature, max_images=10):
                         Rerun.log_2d_seq_scalar('trajectory_stats/num_matches', img_id, vo.num_matched_kps)
                         Rerun.log_2d_seq_scalar('trajectory_stats/num_inliers', img_id, vo.num_inliers)
                         
-                        Rerun.log_3d_camera_img_seq(img_id, vo.draw_img, None, cam, vo.poses[-1])
+                        Rerun.log_3d_camera_img_seq(img_id, vo.draw_img, mask,None, cam, vo.poses[-1])
                         Rerun.log_3d_trajectory(img_id, vo.traj3d_est, 'estimated', color=[0,0,255])
                         Rerun.log_3d_trajectory(img_id, vo.traj3d_gt, 'ground_truth', color=[255,0,0])     
                     else:
@@ -302,8 +302,8 @@ def run_exp(name, feature, max_images=10):
     ax[0].legend()
     ax[1].plot(idxs, px_shifts, label='px_shifts')
     ax[1].legend()
-    plt.savefig(f'nh_data/nighthawk_{config_name}_{name}.png')
-    plt.close()
+    # plt.savefig(f'nh_data/nighthawk_{config_name}_{name}.png')
+    # plt.close()
     # except Exception as e:
     #     print(f'Error in {name}: {e}')
     #     idxs = range(len(matched_kps))
@@ -426,17 +426,17 @@ if __name__ == "__main__":
     # set PYSLAM_CONFIG environment variable to the path of the settings file
     feature_dict = {
         "LK_SHI_TOMASI": FeatureTrackerConfigs.LK_SHI_TOMASI,
-        "LK_FAST": FeatureTrackerConfigs.LK_FAST,
-        "ORB": FeatureTrackerConfigs.ORB,
-        "BRISK": FeatureTrackerConfigs.BRISK,
-        "AKAZE": FeatureTrackerConfigs.AKAZE,
-        "SIFT": FeatureTrackerConfigs.SIFT,
-        "SUPERPOINT": FeatureTrackerConfigs.SUPERPOINT,
-        "R2D2": FeatureTrackerConfigs.R2D2
+        # "LK_FAST": FeatureTrackerConfigs.LK_FAST,
+        # "ORB": FeatureTrackerConfigs.ORB,
+        # "BRISK": FeatureTrackerConfigs.BRISK,
+        # "AKAZE": FeatureTrackerConfigs.AKAZE,
+        # "SIFT": FeatureTrackerConfigs.SIFT,
+        # "SUPERPOINT": FeatureTrackerConfigs.SUPERPOINT,
+        # "R2D2": FeatureTrackerConfigs.R2D2
     }
     for key,val in feature_dict.items():
-        try:
-            run_exp(key,val,None)
-        except Exception as e:
-            print(f'Error in {key}: {e}')
-            pass
+        # try:
+        run_exp(key,val,None)
+        # except Exception as e:
+        #     print(f'Error in {key}: {e}')
+        #     pass
