@@ -87,7 +87,7 @@ class VisualOdometryEducational(VisualOdometryBase):
     def removeOutliersByMask(self, mask): 
         if mask is not None:    
             n = self.kpn_cur.shape[0]     
-            mask_index = [ i for i,v in enumerate(mask) if v > 0]    
+            mask_index = [ i for i,v in enumerate(mask) if v > 0]   
             self.kpn_cur = self.kpn_cur[mask_index]           
             self.kpn_ref = self.kpn_ref[mask_index]           
             if self.des_cur is not None: 
@@ -105,13 +105,13 @@ class VisualOdometryEducational(VisualOdometryBase):
     # - degenerate motions such a pure rotation (a sufficient parallax is required) or an infinitesimal viewpoint change (where the translation is almost zero)
     # N.B.3: The five-point algorithm (used for estimating the Essential Matrix) seems to work well in the degenerate planar cases [Five-Point Motion Estimation Made Easy, Hartley]
     # N.B.4: As it is reported above, in case of pure rotation, this algorithm will compute a useless fundamental matrix which cannot be decomposed to return the rotation 
-    def estimatePose(self, kps_ref, kps_cur):	
+    def estimatePose(self, kps_ref, kps_cur,mask=None):	
         kp_ref_u = self.cam.undistort_points(kps_ref)	
         kp_cur_u = self.cam.undistort_points(kps_cur)	        
         self.kpn_ref = self.cam.unproject_points(kp_ref_u)
         self.kpn_cur = self.cam.unproject_points(kp_cur_u)
 
-        # remove using mask
+        self.removeOutliersByMask(mask)
 
         if kUseEssentialMatrixEstimation:
             ransac_method = None 
@@ -150,19 +150,18 @@ class VisualOdometryEducational(VisualOdometryBase):
         self.draw_img = self.drawFeatureTracks(self.cur_image)
         return self.kps_ref, self.des_ref
 
-    def process_frame(self, frame_id) -> None:
+    def process_frame(self, frame_id,mask=None) -> None:
         # convert image to gray if needed    
         if self.cur_image.ndim>2 and not self.is_color:
             self.cur_image = cv2.cvtColor(self.cur_image,cv2.COLOR_RGB2GRAY)                
         # track features 
         self.timer_feat.start()
-        # print(f"kps_ref: {self.kps_ref.shape}, des_ref: {self.des_ref.shape}")
         self.track_result = self.feature_tracker.track(self.prev_image, self.cur_image, self.kps_ref, self.des_ref)
         self.timer_feat.refresh()
         # estimate pose 
         self.timer_pose_est.start()
         try:
-            R, t = self.estimatePose(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)     
+            R, t = self.estimatePose(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched,mask)     
         except Exception as e:
             print(f'Error in pose estimation: {e}')
             R = np.eye(3)

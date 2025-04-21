@@ -157,6 +157,7 @@ def run_exp(name, feature, max_images=10):
     
     img_id = 0
     images = []
+    masks = []
     while True:
         # if img_id >= dataset.num_frames -1 and max_images is None:
         #     break
@@ -176,7 +177,8 @@ def run_exp(name, feature, max_images=10):
 
         if img is not None:
             images.append(img)
-            matched_kp, num_inlier, px_shift, kp_cur, des_cur = vo.track(img, depth, img_id, timestamp)  # main VO function 
+            masks.append(mask)
+            matched_kp, num_inlier, px_shift, kp_cur, des_cur = vo.track(img, depth, img_id, timestamp,mask)  # main VO function 
             if matched_kp is not None:
                 matched_kps.append(matched_kp)
                 num_inliers.append(num_inlier)

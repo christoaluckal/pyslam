@@ -92,13 +92,13 @@ class VisualOdometryBase:
     def process_first_frame(self, frame_id) -> None:
         pass
 
-    def process_frame(self, frame_id) -> None:
+    def process_frame(self, frame_id, mask=None) -> None:
         pass
 
-    def track(self, img, depth, frame_id, timestamp) -> None:
+    def track(self, img, depth, frame_id, timestamp, mask=None) -> None:
         if kVerbose:
             print('..................................')
-            print(f'frame: {frame_id}, timestamp: {timestamp}')       
+            print(f'frame: {frame_id}, timestamp: {timestamp}')     
         # check coherence of image size with camera settings 
         assert(img.shape[0]==self.cam.height and img.shape[1]==self.cam.width), "Frame: provided image has not the same size as the camera model or image is not grayscale"
         self.cur_image = img
@@ -107,7 +107,7 @@ class VisualOdometryBase:
         # manage and check stage 
         a,b,c,d,e = None, None, None, None, None
         if(self.state == VoState.GOT_FIRST_IMAGE):
-            a,b,c,d,e = self.process_frame(frame_id)
+            a,b,c,d,e = self.process_frame(frame_id,mask)
             self.update_history()   
         elif(self.state == VoState.NO_IMAGES_YET):
             d,e = self.process_first_frame(frame_id)
