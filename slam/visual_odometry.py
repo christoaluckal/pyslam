@@ -84,18 +84,30 @@ class VisualOdometryEducational(VisualOdometryBase):
                 F = F[0:3, 0:3]
             return np.matrix(F), mask 	
 
-    def removeOutliersByMask(self, mask): 
-        if mask is not None:    
-            n = self.kpn_cur.shape[0]     
-            mask_index = [ i for i,v in enumerate(mask) if v > 0]   
-            self.kpn_cur = self.kpn_cur[mask_index]           
-            self.kpn_ref = self.kpn_ref[mask_index]           
-            if self.des_cur is not None: 
-                self.des_cur = self.des_cur[mask_index]        
-            if self.des_ref is not None: 
-                self.des_ref = self.des_ref[mask_index]  
-            if kVerbose:
-                print('removed ', n-self.kpn_cur.shape[0],' outliers')                
+    # def removeOutliersByMask(self, mask): 
+    #     if mask is not None:    
+    #         print(self.kpn_cur)
+    #         n = self.kpn_cur.shape[0]     
+    #         mask_index = [ i for i,v in enumerate(mask) if v > 0]   
+    #         self.kpn_cur = self.kpn_cur[mask_index]           
+    #         self.kpn_ref = self.kpn_ref[mask_index]           
+    #         if self.des_cur is not None: 
+    #             self.des_cur = self.des_cur[mask_index]        
+    #         if self.des_ref is not None: 
+    #             self.des_ref = self.des_ref[mask_index]  
+    #         if kVerbose:
+    #             print('removed ', n-self.kpn_cur.shape[0],' outliers') 
+    def filterKPS(self, kps, mask):
+        mask_idxs = []
+        for i in kps:
+            col = int(i[0])
+            row = int(i[1])
+            if mask[row][col]<10:
+                mask_idxs.append(False)
+            else:
+                mask_idxs.append(True)
+        return mask_idxs
+
 
     # Fit essential matrix E with RANSAC such that:  p2.T * E * p1 = 0  where  E = [t21]x * R21
     # out: [Rrc, trc]   (with respect to 'ref' frame) 
@@ -106,12 +118,11 @@ class VisualOdometryEducational(VisualOdometryBase):
     # N.B.3: The five-point algorithm (used for estimating the Essential Matrix) seems to work well in the degenerate planar cases [Five-Point Motion Estimation Made Easy, Hartley]
     # N.B.4: As it is reported above, in case of pure rotation, this algorithm will compute a useless fundamental matrix which cannot be decomposed to return the rotation 
     def estimatePose(self, kps_ref, kps_cur,mask=None):	
+        # kps_cur = self.filterKPS(kps_cur,mask)
         kp_ref_u = self.cam.undistort_points(kps_ref)	
         kp_cur_u = self.cam.undistort_points(kps_cur)	        
         self.kpn_ref = self.cam.unproject_points(kp_ref_u)
         self.kpn_cur = self.cam.unproject_points(kp_cur_u)
-
-        self.removeOutliersByMask(mask)
 
         if kUseEssentialMatrixEstimation:
             ransac_method = None 
@@ -156,6 +167,9 @@ class VisualOdometryEducational(VisualOdometryBase):
             self.cur_image = cv2.cvtColor(self.cur_image,cv2.COLOR_RGB2GRAY)                
         # track features 
         self.timer_feat.start()
+        if mask is not None:
+            kmask = self.filterKPS(self.kps_ref, mask)
+            self.kps_ref = self.kps_ref[kmask]
         self.track_result = self.feature_tracker.track(self.prev_image, self.cur_image, self.kps_ref, self.des_ref)
         self.timer_feat.refresh()
         # estimate pose 
@@ -215,25 +229,26 @@ class VisualOdometryEducational(VisualOdometryBase):
 
     def drawFeatureTracks(self, img, reinit = False):
         # draw_img = cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
-        # num_outliers = 0         
-        # if self.state == VoState.GOT_FIRST_IMAGE:                      
-        #     if reinit:
-        #         for p1 in self.kps_cur:
-        #             a,b = p1.ravel()
-        #             cv2.circle(draw_img,(a,b),1, (0,255,0),-1)                    
-        #     else:    
-        #         print(f'drawing feature tracks, num features matched: {len(self.track_result.kps_ref_matched)}')
-        #         for i,pts in enumerate(zip(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)):
-        #             drawAll = False # set this to true if you want to draw outliers 
-        #             if self.mask_match[i] or drawAll:
-        #                 p1, p2 = pts 
-        #                 a,b = p1.astype(int).ravel()
-        #                 c,d = p2.astype(int).ravel()
-        #                 cv2.line(draw_img, (a,b),(c,d), (0,255,0), 1)
-        #                 cv2.circle(draw_img,(a,b),1, (0,0,255),-1)   
-        #             else:
-        #                 num_outliers+=1
-        #     if kVerbose:
-        #         print('# outliers: ', num_outliers)     
-        # return draw_img            
+        draw_img = img
+        num_outliers = 0         
+        if self.state == VoState.GOT_FIRST_IMAGE:                      
+            if reinit:
+                for p1 in self.kps_cur:
+                    a,b = p1.ravel()
+                    cv2.circle(draw_img,(a,b),1, (0,255,0),-1)                    
+            else:    
+                print(f'drawing feature tracks, num features matched: {len(self.track_result.kps_ref_matched)}')
+                for i,pts in enumerate(zip(self.track_result.kps_ref_matched, self.track_result.kps_cur_matched)):
+                    drawAll = False # set this to true if you want to draw outliers 
+                    if self.mask_match[i] or drawAll:
+                        p1, p2 = pts 
+                        a,b = p1.astype(int).ravel()
+                        c,d = p2.astype(int).ravel()
+                        cv2.line(draw_img, (a,b),(c,d), (0,255,0), 1)
+                        cv2.circle(draw_img,(a,b),1, (0,0,255),-1)   
+                    else:
+                        num_outliers+=1
+            if kVerbose:
+                print('# outliers: ', num_outliers)     
+        return draw_img            
         return img

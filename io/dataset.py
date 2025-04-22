@@ -407,7 +407,7 @@ class FolderDataset(Dataset):
         mask_file = self.mask_listing[frame_id] if self.mask_path is not None else None
         img = cv2.imread(image_file)
         if mask_file is not None:
-            mask = cv2.imread(mask_file)
+            mask = cv2.imread(mask_file, cv2.IMREAD_GRAYSCALE)
         # img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         pattern = re.compile(r'\d+')
         if self.timestamps is not None:

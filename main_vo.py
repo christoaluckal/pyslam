@@ -159,6 +159,7 @@ def run_exp(name, feature, max_images=10):
     images = []
     masks = []
     while True:
+        # time.sleep(0.5)
         # if img_id >= dataset.num_frames -1 and max_images is None:
         #     break
         # if img_id >= max_images:
